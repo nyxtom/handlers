@@ -14,7 +14,7 @@ where
     type Output = R;
 
     #[inline]
-    fn call(&self, _: ()) -> R {
+    fn call(&self, _: ()) -> Self::Output {
         (*self)()
     }
 }
@@ -146,6 +146,10 @@ mod tests {
         c * 4
     }
 
+    fn stringer<T: std::fmt::Display>(v: T) -> String {
+        format!("{}", v)
+    }
+
     fn log_multiply(c: i32) -> i32 {
         println!("{c}");
         c
@@ -201,6 +205,12 @@ mod tests {
     }
 
     #[test]
+    fn test_chain() {
+        map(plus, map(multiply, stringer));
+        map(plus, multiply);
+    }
+
+    #[test]
     fn test_map() {
         // test |> multi |> add
         map(test, map(multi, add));
@@ -246,9 +256,10 @@ mod tests {
         //assert_impl((plus, plus, plus));
         //assert_impl((plus, plus, single));
         //assert_impl((plus, single, tuple_add));
+        map(plus, single);
         assert_impl((plus, plus));
         map(plus, map(plus, plus));
-        // FIXME assert_impl((test, test2)); test => ()
+        map(test, test);
         assert_impl((test, foo));
         assert_impl((test, multi));
         // FIXME assert_impl((foo, plus)); foo => i32
