@@ -79,9 +79,6 @@ where
     fn pipe(self) -> Map<A, B, Args>;
 }
 
-///
-/// Handler implementations for (A, B)
-///
 impl<A, B, Args> Handler<A, B, Args> for (A, B)
 where
     A: Func<Args>,
@@ -96,6 +93,144 @@ where
             b: self.1,
             _p: PhantomData::default(),
         }
+    }
+}
+
+impl<A, B, C, Args> Handler<Map<A, B, Args>, C, Args> for (A, B, C)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+{
+    type Input = Args;
+    type Output = C::Output;
+
+    fn pipe(self) -> Map<Map<A, B, Args>, C, Args> {
+        let m = (self.0, self.1).pipe();
+        (m, self.2).pipe()
+    }
+}
+
+impl<A, B, C, D, Args> Handler<Map<Map<A, B, Args>, C, Args>, D, Args> for (A, B, C, D)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+{
+    type Input = Args;
+    type Output = D::Output;
+
+    fn pipe(self) -> Map<Map<Map<A, B, Args>, C, Args>, D, Args> {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        (m, self.3).pipe()
+    }
+}
+
+impl<A, B, C, D, E, Args> Handler<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>
+    for (A, B, C, D, E)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+    E: Func<D::Output>,
+{
+    type Input = Args;
+    type Output = E::Output;
+
+    fn pipe(self) -> Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args> {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        let m = (m, self.3).pipe();
+        (m, self.4).pipe()
+    }
+}
+
+impl<A, B, C, D, E, F, Args>
+    Handler<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>
+    for (A, B, C, D, E, F)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+    E: Func<D::Output>,
+    F: Func<E::Output>,
+{
+    type Input = Args;
+    type Output = F::Output;
+
+    fn pipe(self) -> Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args> {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        let m = (m, self.3).pipe();
+        let m = (m, self.4).pipe();
+        (m, self.5).pipe()
+    }
+}
+
+impl<A, B, C, D, E, F, G, Args>
+    Handler<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args>
+    for (A, B, C, D, E, F, G)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+    E: Func<D::Output>,
+    F: Func<E::Output>,
+    G: Func<F::Output>,
+{
+    type Input = Args;
+    type Output = G::Output;
+
+    fn pipe(
+        self,
+    ) -> Map<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args> {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        let m = (m, self.3).pipe();
+        let m = (m, self.4).pipe();
+        let m = (m, self.5).pipe();
+        (m, self.6).pipe()
+    }
+}
+
+impl<A, B, C, D, E, F, G, H, Args>
+    Handler<
+        Map<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args>,
+        H,
+        Args,
+    > for (A, B, C, D, E, F, G, H)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+    E: Func<D::Output>,
+    F: Func<E::Output>,
+    G: Func<F::Output>,
+    H: Func<G::Output>,
+{
+    type Input = Args;
+    type Output = H::Output;
+
+    fn pipe(
+        self,
+    ) -> Map<
+        Map<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args>,
+        H,
+        Args,
+    > {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        let m = (m, self.3).pipe();
+        let m = (m, self.4).pipe();
+        let m = (m, self.5).pipe();
+        let m = (m, self.6).pipe();
+        (m, self.7).pipe()
     }
 }
 
@@ -217,6 +352,16 @@ mod tests {
     }
 
     #[test]
+    fn test_long_tuple() {
+        assert_impl((test, multi, add));
+        assert_impl((multiply, multiply, multiply, multiply));
+        assert_impl((log_multiply, multiply, multiply, multiply));
+        assert_impl((plus, multiply, plus, input));
+        assert_impl((plus, multiply, single, tuple_add));
+        assert_impl((multi, outer, log_adder, add));
+    }
+
+    #[test]
     fn test_effects() {
         assert_impl((log_adder, add));
         assert_impl((log_adder, add));
@@ -253,6 +398,7 @@ mod tests {
         assert_impl_handler(outer);
         //assert_impl((outer, outer, outer));
         assert_impl((outer, outer));
+        let _ = map(outer, map(outer, add)).call((4, 5));
         //assert_impl((plus, plus, plus));
         //assert_impl((plus, plus, single));
         //assert_impl((plus, single, tuple_add));
