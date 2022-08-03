@@ -1,10 +1,8 @@
-#![feature(associated_type_bounds)]
-
 use std::marker::PhantomData;
 
-pub trait Func<I> {
+pub trait Func<Args> {
     type Output;
-    fn call(&self, args: I) -> Self::Output;
+    fn call(&self, args: Args) -> Self::Output;
 }
 
 impl<F, R> Func<()> for F
@@ -26,7 +24,7 @@ macro_rules! generics {
     ($type:ident) => {
         impl<F, R, $type> Func<($type,)> for F
         where
-            F: Fn($type) -> R
+            F: Fn($type) -> R,
         {
             type Output = (R,);
 
@@ -69,14 +67,14 @@ where
     _p: PhantomData<Args>,
 }
 
-pub trait Handler<A, B, Args>
+pub trait Handler<A, B, Input>
 where
-    A: Func<Args>,
+    A: Func<Input>,
     B: Func<A::Output>,
 {
     type Input;
     type Output;
-    fn pipe(self) -> Map<A, B, Args>;
+    fn pipe(self) -> Map<A, B, Input>;
 }
 
 impl<A, B, Args> Handler<A, B, Args> for (A, B)
@@ -234,6 +232,52 @@ where
     }
 }
 
+impl<A, B, C, D, E, F, G, H, I, Args>
+    Handler<
+        Map<
+            Map<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args>,
+            H,
+            Args,
+        >,
+        I,
+        Args,
+    > for (A, B, C, D, E, F, G, H, I)
+where
+    A: Func<Args>,
+    B: Func<A::Output>,
+    C: Func<B::Output>,
+    D: Func<C::Output>,
+    E: Func<D::Output>,
+    F: Func<E::Output>,
+    G: Func<F::Output>,
+    H: Func<G::Output>,
+    I: Func<H::Output>,
+{
+    type Input = Args;
+    type Output = I::Output;
+
+    fn pipe(
+        self,
+    ) -> Map<
+        Map<
+            Map<Map<Map<Map<Map<Map<A, B, Args>, C, Args>, D, Args>, E, Args>, F, Args>, G, Args>,
+            H,
+            Args,
+        >,
+        I,
+        Args,
+    > {
+        let m = (self.0, self.1).pipe();
+        let m = (m, self.2).pipe();
+        let m = (m, self.3).pipe();
+        let m = (m, self.4).pipe();
+        let m = (m, self.5).pipe();
+        let m = (m, self.6).pipe();
+        let m = (m, self.7).pipe();
+        (m, self.8).pipe()
+    }
+}
+
 impl<A, B, Args> Func<Args> for Map<A, B, Args>
 where
     A: Func<Args>,
@@ -258,6 +302,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::io::Result;
+
     use super::*;
 
     fn test() {}
@@ -356,9 +402,25 @@ mod tests {
         assert_impl((test, multi, add));
         assert_impl((multiply, multiply, multiply, multiply));
         assert_impl((log_multiply, multiply, multiply, multiply));
+        let m = (outer, outer).pipe();
+        let m = (m, add).pipe();
+
+        let m = (log_multiply, multiply, multiply, multiply).pipe();
+        assert_impl((log_multiply, multiply, single));
+        let m = (log_multiply, multiply, single).pipe();
+        let m = (single, tuple_add, single, tuple_add, plus, multiply).pipe();
+        map(single, outer);
+        //assert_impl((log_multiply, multiply, single, outer));
         assert_impl((plus, multiply, plus, input));
         assert_impl((plus, multiply, single, tuple_add));
         assert_impl((multi, outer, log_adder, add));
+
+        //assert_impl((multi, outer, log_adder, add, plus, plus));
+        let m = (multi, outer, log_adder, add).pipe();
+        assert_impl((foo, plus));
+        assert_impl_handler(plus);
+        assert_impl_handler(m);
+        assert_impl((m, plus));
     }
 
     #[test]
